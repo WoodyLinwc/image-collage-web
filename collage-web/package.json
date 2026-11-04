@@ -1,0 +1,23 @@
+{
+  "name": "collage-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "纯前端在线拼图：多图拼接、多种比例、拖动缩放、本地导出，可直接部署到 Vercel",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host"
+  },
+  "dependencies": {
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.5"
+  }
+}
