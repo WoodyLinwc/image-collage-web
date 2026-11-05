@@ -36,9 +36,13 @@ export function TemplateThumb({
       aria-label={`布局 ${template.id}`}
       aria-pressed={active}
     >
-      <span className="thumb-box" style={{ width: w, height: h }}>
+      <span className={`thumb-box ${template.free ? 'free' : ''}`} style={{ width: w, height: h }}>
         {rects.map((r, i) => (
-          <span key={i} className="thumb-cell" style={{ left: r.x, top: r.y, width: r.w, height: r.h }} />
+          <span
+            key={i}
+            className={`thumb-cell ${template.frames?.[i] ? 'framed' : ''}`}
+            style={{ left: r.x, top: r.y, width: r.w, height: r.h }}
+          />
         ))}
         {Array.from({ length: pages - 1 }, (_, k) => (
           <span key={`s${k}`} className="thumb-seam" style={{ left: ((k + 1) * w) / pages }} />

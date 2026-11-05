@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react';
 import type { Photo, StyleSettings } from './types';
 import { RATIOS } from './ratios';
 import { templatesFor } from './layouts';
-import { cellRects, cornerRadius, MAX_ZOOM, styleUnit } from './geometry';
+import { cellRects, cornerRadius, frameWidth, MAX_ZOOM, styleUnit } from './geometry';
 import { isImageFile, loadPhoto, MAX_PHOTOS } from './imageLoader';
 import { Board } from './components/Board';
 import { PagesButton, RatioButton, TemplateThumb } from './components/Thumbs';
@@ -53,7 +53,14 @@ export default function App() {
   photosRef.current = photos;
 
   const ratio = RATIOS.find((r) => r.id === ratioId) ?? RATIOS[0];
-  const templates = useMemo(() => templatesFor(photos.length, pages, ratio.w / ratio.h), [photos.length, pages, ratio]);
+  // 只在照片比例变化时重算布局（拖动、缩放不会触发）
+  const aspectsKey = photos.map((p) => (p.width / p.height).toFixed(3)).join(',');
+  const templates = useMemo(
+    () => templatesFor(photos.length, pages, ratio.w / ratio.h, aspectsKey ? aspectsKey.split(',').map(Number) : []),
+    [photos.length, pages, ratio, aspectsKey],
+  );
+  const artList = templates.filter((t) => t.free);
+  const gridList = templates.filter((t) => !t.free);
   const template = templates.find((t) => t.id === templateId) ?? templates[0];
   const selected = photos.find((p) => p.id === selectedId) ?? null;
 
@@ -286,6 +293,8 @@ export default function App() {
               selectedId={selectedId}
               swapMode={swapMode}
               pages={pages}
+              frames={template.frames}
+              frameWidth={frameWidth(unit)}
               onTap={handleTap}
               onChange={updatePhoto}
             />
@@ -359,7 +368,12 @@ export default function App() {
               <p className="muted small">添加图片后，这里会按张数给出可选布局</p>
             ) : (
               <div className="hscroll">
-                {templates.map((t) => (
+                {artList.length > 0 && <span className="thumb-group">留白</span>}
+                {artList.map((t) => (
+                  <TemplateThumb key={t.id} template={t} aspect={(pages * ratio.w) / ratio.h} pages={pages} active={t.id === template?.id} onClick={() => setTemplateId(t.id)} />
+                ))}
+                {artList.length > 0 && <span className="thumb-group">拼接</span>}
+                {gridList.map((t) => (
                   <TemplateThumb key={t.id} template={t} aspect={(pages * ratio.w) / ratio.h} pages={pages} active={t.id === template?.id} onClick={() => setTemplateId(t.id)} />
                 ))}
               </div>
@@ -395,6 +409,7 @@ export default function App() {
               <Slider label="外框" value={style.padding} max={80} onChange={(v) => setStyle((s) => ({ ...s, padding: v }))} />
               <Slider label="圆角" value={style.radius} max={80} onChange={(v) => setStyle((s) => ({ ...s, radius: v }))} />
             </div>
+            {template?.free && <p className="muted small style-note">当前是留白布局，留白由布局决定，间距和外框不生效</p>}
           </section>
 
           <section className={`section ${tab === 'bg' ? 'active' : ''}`}>

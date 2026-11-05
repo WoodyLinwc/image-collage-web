@@ -13,6 +13,22 @@ export function styleUnit(W: number, H: number, pages = 1): number {
  * 预览和导出共用这一个函数，所以两者的排版完全一致，只是分辨率不同。
  */
 export function cellRects(t: Template, W: number, H: number, st: StyleSettings, round = true, unit = Math.min(W, H)): Rect[] {
+  if (t.free) {
+    // 留白布局：位置是布局自己定的，直接按比例换算
+    return t.cells.map((c) => {
+      let x0 = c.x * W;
+      let x1 = (c.x + c.w) * W;
+      let y0 = c.y * H;
+      let y1 = (c.y + c.h) * H;
+      if (round) {
+        x0 = Math.round(x0);
+        x1 = Math.round(x1);
+        y0 = Math.round(y0);
+        y1 = Math.round(y1);
+      }
+      return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
+    });
+  }
   const pad = (st.padding / 1000) * unit;
   const half = ((st.gap / 1000) * unit) / 2;
   const iw = W - pad * 2;
@@ -36,6 +52,11 @@ export function cellRects(t: Template, W: number, H: number, st: StyleSettings, 
     }
     return { x: x0, y: y0, w: Math.max(1, x1 - x0), h: Math.max(1, y1 - y0) };
   });
+}
+
+/** 叠放图片外圈描边的宽度 */
+export function frameWidth(unit: number): number {
+  return Math.max(1, Math.round(unit * 0.016));
 }
 
 export function cornerRadius(st: StyleSettings, unit: number, r: Rect): number {

@@ -480,6 +480,29 @@ p {
   cursor: pointer;
 }
 
+.thumb-box.free {
+  background: var(--surface);
+  box-shadow: 0 0 0 1px var(--line);
+}
+.thumb.active .thumb-box.free {
+  box-shadow: 0 0 0 1px #cfc6b6;
+}
+.thumb-cell.framed {
+  box-shadow: 0 0 0 1.5px var(--surface);
+}
+.thumb-group {
+  flex: none;
+  align-self: center;
+  writing-mode: vertical-rl;
+  letter-spacing: 0.25em;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 0 1px;
+}
+.style-note {
+  margin-top: 6px;
+}
+
 /* ---------- 多页（轮播拆分） ---------- */
 .thumb-seam {
   position: absolute;
@@ -829,6 +852,16 @@ p {
   }
   .pages-label {
     display: none;
+  }
+  .thumb-group {
+    writing-mode: horizontal-tb;
+    flex-basis: 100%;
+    align-self: auto;
+    letter-spacing: 0.1em;
+    padding: 4px 0 0;
+  }
+  .thumb-group:first-child {
+    padding-top: 0;
   }
   .hscroll {
     flex-wrap: wrap;

@@ -26,6 +26,10 @@ export interface Photo {
 export interface Template {
   id: string;
   cells: Rect[];
+  /** 留白布局：格子位置由布局本身决定，不受间距 / 外框设置影响 */
+  free?: boolean;
+  /** 哪些格子外面带一圈背景色描边（图片叠放时用） */
+  frames?: boolean[];
 }
 
 export interface Ratio {

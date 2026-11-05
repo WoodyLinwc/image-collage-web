@@ -1,5 +1,5 @@
 import type { Photo, Ratio, StyleSettings, Template } from './types';
-import { cellRects, cornerRadius, placeImage, styleUnit } from './geometry';
+import { cellRects, cornerRadius, frameWidth, placeImage, styleUnit } from './geometry';
 import { canvasToBlob, loadImageElement } from './imageLoader';
 
 export type ExportFormat = 'jpeg' | 'png';
@@ -155,8 +155,16 @@ export async function renderCollage(o: RenderOptions): Promise<Blob[]> {
         const sy = Math.min(Math.max(0, -pl.y / pl.scale), ih - sh);
         const src = stepDown(img, sx, sy, sw, sh, r.w, r.h);
 
+        const radius = cornerRadius(o.style, unit, r);
+        if (o.template.frames?.[i]) {
+          // 叠在上面的图：先画一圈背景色描边，和下面的图分开
+          const fw = frameWidth(unit);
+          ctx.fillStyle = o.style.background;
+          roundedRectPath(ctx, r.x - fw, r.y - fw, r.w + fw * 2, r.h + fw * 2, radius > 0 ? radius + fw : 0);
+          ctx.fill();
+        }
         ctx.save();
-        roundedRectPath(ctx, r.x, r.y, r.w, r.h, cornerRadius(o.style, unit, r));
+        roundedRectPath(ctx, r.x, r.y, r.w, r.h, radius);
         ctx.clip();
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';

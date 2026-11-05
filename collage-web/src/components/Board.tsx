@@ -14,6 +14,9 @@ interface Props {
   swapMode: boolean;
   /** 横向页数，>1 时画出分页线 */
   pages: number;
+  /** 哪些格子外圈有描边，以及描边宽度 */
+  frames?: boolean[];
+  frameWidth: number;
   onTap: (id: string | null) => void;
   onChange: (id: string, patch: Partial<Photo>) => void;
 }
@@ -40,7 +43,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
  * 第二根手指落在别处也能双指缩放（小格子里放不下两根手指）。
  */
 export function Board(props: Props) {
-  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages } = props;
+  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages, frames, frameWidth } = props;
   const ref = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   latest.current = props;
@@ -170,7 +173,15 @@ export function Board(props: Props) {
           .filter(Boolean)
           .join(' ');
         return (
-          <div key={p.id} data-id={p.id} className={cls} style={{ left: r.x, top: r.y, width: r.w, height: r.h, borderRadius: radii[i] }}>
+          <div key={p.id} data-id={p.id} className={cls} style={{
+              left: r.x,
+              top: r.y,
+              width: r.w,
+              height: r.h,
+              borderRadius: radii[i],
+              boxShadow: frames?.[i] ? `0 0 0 ${frameWidth}px ${background}` : undefined,
+            }}
+          >
             <img
               src={p.previewUrl}
               alt=""

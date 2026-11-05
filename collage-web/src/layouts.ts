@@ -1,4 +1,5 @@
 import type { Rect, Template } from './types';
+import { artTemplates } from './artLayouts';
 
 /* ------------------------------------------------------------------
  * 布局树：H 为左右并排，V 为上下堆叠，L 为一张图。
@@ -170,12 +171,19 @@ function signature(t: Template): string {
 const cache = new Map<string, Template[]>();
 
 /**
- * @param n          图片张数
- * @param pages      横向拆成几张（1 = 普通拼图）
- * @param pageAspect 单页宽高比
+ * @param n            图片张数
+ * @param pages        横向拆成几张（1 = 普通拼图）
+ * @param pageAspect   单页宽高比
+ * @param photoAspects 每张照片的宽高比（留白布局按照片原比例排）
+ * 返回：先是拼接布局，单页时后面再接「留白」布局
  */
-export function templatesFor(n: number, pages = 1, pageAspect = 1): Template[] {
+export function templatesFor(n: number, pages = 1, pageAspect = 1, photoAspects: number[] = []): Template[] {
   if (n <= 0) return [];
+  const grid = gridTemplates(n, pages, pageAspect);
+  return pages > 1 ? grid : [...grid, ...artTemplates(n, pageAspect, photoAspects)];
+}
+
+function gridTemplates(n: number, pages: number, pageAspect: number): Template[] {
   const key = pages > 1 ? `${n}|${pages}|${pageAspect.toFixed(3)}` : `${n}`;
   const hit = cache.get(key);
   if (hit) return hit;
