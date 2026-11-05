@@ -385,7 +385,7 @@ p {
 
 .ratio {
   flex: none;
-  width: 58px;
+  width: 64px;
   padding: 6px 0 5px;
   border-radius: 12px;
   display: flex;
