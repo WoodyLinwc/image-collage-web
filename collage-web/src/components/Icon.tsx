@@ -9,6 +9,7 @@ const PATHS: Record<string, string[]> = {
   check: ['M5 12.5l4.5 4.5L19 7.5'],
   close: ['M6 6l12 12', 'M18 6L6 18'],
   layers: ['M4 4h7v16H4z', 'M13 4h7v7h-7z', 'M13 13h7v7h-7z'],
+  fit: ['M3.5 4.5h17v15h-17z', 'M9 7.5h6v9H9z'],
 };
 
 export function Icon({ name, size = 20 }: { name: keyof typeof PATHS | string; size?: number }) {

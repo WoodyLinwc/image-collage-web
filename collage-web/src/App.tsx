@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
-import type { Photo, StyleSettings } from './types';
+import type { Fit, Photo, StyleSettings } from './types';
 import { RATIOS } from './ratios';
 import { templatesFor } from './layouts';
 import { cellRects, cornerRadius, frameWidth, MAX_ZOOM, styleUnit } from './geometry';
 import { isImageFile, loadPhoto, MAX_PHOTOS } from './imageLoader';
 import { Board } from './components/Board';
-import { PagesButton, RatioButton, TemplateThumb } from './components/Thumbs';
+import { FitIcon, PagesButton, RatioButton, TemplateThumb } from './components/Thumbs';
 import { ExportSheet } from './components/ExportSheet';
 import { Icon } from './components/Icon';
 
@@ -40,7 +40,7 @@ export default function App() {
   /** 横向拆成几张（Ins / 小红书左右滑动的无缝拼图） */
   const [pages, setPages] = useState(1);
   const [templateId, setTemplateId] = useState<string | null>(null);
-  const [style, setStyle] = useState<StyleSettings>({ gap: 12, padding: 12, radius: 0, background: '#ffffff' });
+  const [style, setStyle] = useState<StyleSettings>({ gap: 12, padding: 12, radius: 0, background: '#ffffff', fit: 'cover' });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [swapMode, setSwapMode] = useState(false);
   const [tab, setTab] = useState<Tab>('layout');
@@ -163,6 +163,14 @@ export default function App() {
   const updatePhoto = useCallback((id: string, patch: Partial<Photo>) => {
     setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }, []);
+
+  const fitOf = (p: Photo): Fit => p.fit ?? style.fit;
+
+  /** 全局切换铺满 / 完整显示：所有图片跟随，并回到居中、不缩放 */
+  const setFitAll = (fit: Fit) => {
+    setStyle((s) => ({ ...s, fit }));
+    setPhotos((prev) => prev.map((p) => ({ ...p, fit: undefined, zoom: 1, px: 0.5, py: 0.5 })));
+  };
 
   const removeSelected = useCallback(() => {
     if (!selectedId) return;
@@ -298,6 +306,7 @@ export default function App() {
               pageGap={PAGE_GAP}
               frames={template.frames}
               frameWidth={frameWidth(unit)}
+              defaultFit={style.fit}
               onTap={handleTap}
               onChange={updatePhoto}
             />
@@ -334,6 +343,14 @@ export default function App() {
                 <button type="button" className={`sel-btn ${swapMode ? 'on' : ''}`} onClick={() => setSwapMode((v) => !v)} disabled={photos.length < 2}>
                   <Icon name="swap" />
                   换位
+                </button>
+                <button
+                  type="button"
+                  className={`sel-btn ${fitOf(selected) === 'contain' ? 'on' : ''}`}
+                  onClick={() => updatePhoto(selected.id, { fit: fitOf(selected) === 'contain' ? 'cover' : 'contain', zoom: 1, px: 0.5, py: 0.5 })}
+                >
+                  <Icon name="fit" />
+                  完整
                 </button>
                 <button type="button" className="sel-btn" onClick={() => replaceInputRef.current?.click()}>
                   <Icon name="image" />
@@ -389,6 +406,33 @@ export default function App() {
               {RATIOS.map((r) => (
                 <RatioButton key={r.id} ratio={r} active={r.id === ratio.id} onClick={() => setRatioId(r.id)} />
               ))}
+            </div>
+            <h3 className="section-title fit-title">图片填充</h3>
+            <div className="fit-row">
+              <span className="fit-label">图片</span>
+              <div className="seg fit-seg" role="radiogroup" aria-label="图片填充方式">
+                {(
+                  [
+                    ['cover', '铺满裁切', '多出的部分裁掉'],
+                    ['contain', '完整显示', '空白处补背景色'],
+                  ] as const
+                ).map(([kind, title, desc]) => (
+                  <button
+                    type="button"
+                    role="radio"
+                    aria-checked={style.fit === kind}
+                    key={kind}
+                    className={style.fit === kind ? 'active' : ''}
+                    onClick={() => setFitAll(kind)}
+                  >
+                    <FitIcon kind={kind} />
+                    <span className="fit-text">
+                      <span className="fit-name">{title}</span>
+                      <small>{desc}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
 

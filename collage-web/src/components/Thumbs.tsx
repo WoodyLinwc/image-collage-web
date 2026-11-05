@@ -1,4 +1,4 @@
-import type { Ratio, Template } from '../types';
+import type { Fit, Ratio, Template } from '../types';
 import { cellRects } from '../geometry';
 
 function fitBox(aspect: number, maxW: number, maxH: number) {
@@ -26,7 +26,7 @@ export function TemplateThumb({
   onClick: () => void;
 }) {
   const { w, h } = fitBox(aspect, pages > 1 ? 84 : 46, 46);
-  const rects = cellRects(template, w, h, { gap: 70, padding: 0, radius: 0, background: '' }, false, Math.min(w / pages, h));
+  const rects = cellRects(template, w, h, { gap: 70, padding: 0, radius: 0, background: '', fit: 'cover' }, false, Math.min(w / pages, h));
   return (
     <button
       type="button"
@@ -77,5 +77,19 @@ export function PagesButton({ n, ratio, active, onClick }: { n: number; ratio: R
       </span>
       <span>{n === 1 ? '单张' : `${n} 张`}</span>
     </button>
+  );
+}
+
+/** 铺满 / 完整显示的小图示：外框是画布，实心块是照片 */
+export function FitIcon({ kind }: { kind: Fit }) {
+  return (
+    <svg className="fit-icon" width="24" height="18" viewBox="0 0 24 18" aria-hidden="true">
+      <rect x="0.75" y="0.75" width="22.5" height="16.5" rx="2.5" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      {kind === 'cover' ? (
+        <rect x="3" y="3" width="18" height="12" rx="1" fill="currentColor" opacity="0.8" />
+      ) : (
+        <rect x="8" y="3" width="8" height="12" rx="1" fill="currentColor" opacity="0.8" />
+      )}
+    </svg>
   );
 }

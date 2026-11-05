@@ -1,4 +1,4 @@
-import type { Rect, StyleSettings, Template } from './types';
+import type { Fit, Rect, StyleSettings, Template } from './types';
 
 export const MAX_ZOOM = 4;
 const EPS = 1e-6;
@@ -66,12 +66,27 @@ export function cornerRadius(st: StyleSettings, unit: number, r: Rect): number {
 
 /**
  * 计算图片在格子内的位置（相对格子左上角）。
- * zoom=1 时图片刚好铺满（cover），px/py 决定多出来的部分往哪边裁。
+ * cover：zoom=1 时图片刚好铺满格子，px/py 决定多出来的部分往哪边裁。
+ * contain：zoom=1 时图片完整放进格子，px/py 决定图片在空白里靠哪边。
  * 只依赖宽高比例，与分辨率无关。
  */
-export function placeImage(cw: number, ch: number, iw: number, ih: number, zoom: number, px: number, py: number) {
-  const scale = Math.max(cw / iw, ch / ih) * zoom;
+export function placeImage(cw: number, ch: number, iw: number, ih: number, zoom: number, px: number, py: number, fit: Fit = 'cover') {
+  const base = fit === 'contain' ? Math.min(cw / iw, ch / ih) : Math.max(cw / iw, ch / ih);
+  const scale = base * zoom;
   const w = iw * scale;
   const h = ih * scale;
   return { x: -(w - cw) * px, y: -(h - ch) * py, w, h, scale };
+}
+
+/**
+ * 图片在格子里真正露出来的区域（格子和图片的交集），坐标相对画布。
+ * 铺满时就是整个格子；完整显示时是照片本身占的那一块。
+ */
+export function visibleRect(r: Rect, pl: { x: number; y: number; w: number; h: number }): Rect {
+  const snap = (v: number, edge: number) => (Math.abs(v - edge) < 0.01 ? edge : v);
+  const x0 = snap(Math.max(r.x, r.x + pl.x), r.x);
+  const y0 = snap(Math.max(r.y, r.y + pl.y), r.y);
+  const x1 = snap(Math.min(r.x + r.w, r.x + pl.x + pl.w), r.x + r.w);
+  const y1 = snap(Math.min(r.y + r.h, r.y + pl.y + pl.h), r.y + r.h);
+  return { x: x0, y: y0, w: Math.max(0, x1 - x0), h: Math.max(0, y1 - y0) };
 }

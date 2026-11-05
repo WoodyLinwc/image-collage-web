@@ -1,5 +1,5 @@
 import type { Photo, Ratio, StyleSettings, Template } from './types';
-import { cellRects, cornerRadius, frameWidth, placeImage, styleUnit } from './geometry';
+import { cellRects, cornerRadius, frameWidth, placeImage, styleUnit, visibleRect } from './geometry';
 import { canvasToBlob, loadImageElement } from './imageLoader';
 
 export type ExportFormat = 'jpeg' | 'png';
@@ -148,40 +148,47 @@ export async function renderCollage(o: RenderOptions): Promise<Blob[]> {
         img = await loadImageElement(url);
         const iw = img.naturalWidth;
         const ih = img.naturalHeight;
-        const pl = placeImage(r.w, r.h, iw, ih, photo.zoom, photo.px, photo.py);
-        const sw = Math.min(iw, r.w / pl.scale);
-        const sh = Math.min(ih, r.h / pl.scale);
-        const sx = Math.min(Math.max(0, -pl.x / pl.scale), iw - sw);
-        const sy = Math.min(Math.max(0, -pl.y / pl.scale), ih - sh);
-        // 向外多画 1 像素再按格子精确裁切：缩放时图片边缘的半透明像素落在裁切区外，
-        // 任何浏览器（包括 iOS Safari）都不会在图片边缘留下细线
-        const m = 1 / pl.scale;
-        const sx0 = Math.max(0, sx - m);
-        const sy0 = Math.max(0, sy - m);
-        const sx1 = Math.min(iw, sx + sw + m);
-        const sy1 = Math.min(ih, sy + sh + m);
-        const dx = r.x - (sx - sx0) * pl.scale;
-        const dy = r.y - (sy - sy0) * pl.scale;
-        const dw = (sx1 - sx0) * pl.scale;
-        const dh = (sy1 - sy0) * pl.scale;
-        const src = stepDown(img, sx0, sy0, sx1 - sx0, sy1 - sy0, Math.ceil(dw), Math.ceil(dh));
+        const pl = placeImage(r.w, r.h, iw, ih, photo.zoom, photo.px, photo.py, photo.fit ?? o.style.fit);
+        // 照片真正露出来的区域：铺满时 = 整个格子；完整显示时 = 照片本身那一块，其余是背景色
+        const v = visibleRect(r, pl);
+        if (v.w >= 1 && v.h >= 1) {
+          const s = pl.scale;
+          const ix = r.x + pl.x; // 整张照片左上角在画布上的位置
+          const iy = r.y + pl.y;
+          const sx = Math.max(0, (v.x - ix) / s);
+          const sy = Math.max(0, (v.y - iy) / s);
+          const sw = Math.min(iw - sx, v.w / s);
+          const sh = Math.min(ih - sy, v.h / s);
+          // 向外多画 1 像素再按可见区域精确裁切：缩放时图片边缘的半透明像素落在裁切区外，
+          // 任何浏览器（包括 iOS Safari）都不会在图片边缘留下细线
+          const m = 1 / s;
+          const sx0 = Math.max(0, sx - m);
+          const sy0 = Math.max(0, sy - m);
+          const sx1 = Math.min(iw, sx + sw + m);
+          const sy1 = Math.min(ih, sy + sh + m);
+          const dx = ix + sx0 * s;
+          const dy = iy + sy0 * s;
+          const dw = (sx1 - sx0) * s;
+          const dh = (sy1 - sy0) * s;
+          const src = stepDown(img, sx0, sy0, sx1 - sx0, sy1 - sy0, Math.ceil(dw), Math.ceil(dh));
 
-        const radius = cornerRadius(o.style, unit, r);
-        if (o.template.frames?.[i]) {
-          // 叠在上面的图：先画一圈背景色描边，和下面的图分开
-          const fw = frameWidth(unit);
-          ctx.fillStyle = o.style.background;
-          roundedRectPath(ctx, r.x - fw, r.y - fw, r.w + fw * 2, r.h + fw * 2, radius > 0 ? radius + fw : 0);
-          ctx.fill();
+          const radius = Math.min(cornerRadius(o.style, unit, r), v.w / 2, v.h / 2);
+          if (o.template.frames?.[i]) {
+            // 叠在上面的图：先画一圈背景色描边，和下面的图分开
+            const fw = frameWidth(unit);
+            ctx.fillStyle = o.style.background;
+            roundedRectPath(ctx, v.x - fw, v.y - fw, v.w + fw * 2, v.h + fw * 2, radius > 0 ? radius + fw : 0);
+            ctx.fill();
+          }
+          ctx.save();
+          roundedRectPath(ctx, v.x, v.y, v.w, v.h, radius);
+          ctx.clip();
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(src.image, src.sx, src.sy, src.sw, src.sh, dx, dy, dw, dh);
+          ctx.restore();
+          src.dispose();
         }
-        ctx.save();
-        roundedRectPath(ctx, r.x, r.y, r.w, r.h, radius);
-        ctx.clip();
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(src.image, src.sx, src.sy, src.sw, src.sh, dx, dy, dw, dh);
-        ctx.restore();
-        src.dispose();
       } finally {
         URL.revokeObjectURL(url);
         if (img) img.src = '';

@@ -5,7 +5,7 @@
   --muted: #8a8378;
   --line: #e6e0d5;
   --accent: #e4572e;
-  --dock-h: 184px;
+  --dock-h: 192px;
   font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC',
     'Segoe UI', Roboto, sans-serif;
   color: var(--ink);
@@ -515,6 +515,53 @@ p {
   margin-top: 6px;
 }
 
+/* ---------- 铺满 / 完整显示 ---------- */
+.fit-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+}
+.fit-label {
+  flex: none;
+  font-size: 13px;
+  color: var(--muted);
+}
+.fit-seg {
+  flex: 1;
+  min-width: 0;
+}
+.seg.fit-seg button {
+  flex-direction: row;
+  justify-content: center;
+  gap: 7px;
+  padding: 6px;
+  min-width: 0;
+  color: var(--muted);
+}
+.seg.fit-seg button.active {
+  color: var(--ink);
+}
+.fit-icon {
+  flex: none;
+  display: block;
+}
+.fit-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 0;
+  line-height: 1.25;
+  text-align: left;
+}
+.fit-name {
+  font-size: 13px;
+  white-space: nowrap;
+}
+.fit-text small {
+  display: none;
+}
+
 /* ---------- 多页（轮播拆分） ---------- */
 .thumb-seam {
   position: absolute;
@@ -647,6 +694,7 @@ p {
 }
 .sel-btn {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -853,6 +901,27 @@ p {
   }
   .pages-label {
     display: none;
+  }
+  /* 电脑侧栏：单独一块，按钮里多一行说明 */
+  .fit-title {
+    margin-top: 18px;
+  }
+  .fit-label {
+    display: none;
+  }
+  .fit-row {
+    margin-top: 0;
+  }
+  .seg.fit-seg button {
+    justify-content: flex-start;
+    gap: 9px;
+    padding: 9px 10px;
+  }
+  .fit-text small {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
+    white-space: nowrap;
   }
   .thumb-group {
     writing-mode: horizontal-tb;

@@ -1,3 +1,6 @@
+/** cover = 铺满格子（多余部分裁掉）；contain = 完整显示（空出的地方露出背景色） */
+export type Fit = 'cover' | 'contain';
+
 /** 归一化或像素矩形 */
 export interface Rect {
   x: number;
@@ -20,6 +23,8 @@ export interface Photo {
   /** 裁切位置 0..1，0.5 为居中 */
   px: number;
   py: number;
+  /** 单张图的填充方式；不设置时跟随全局设置 */
+  fit?: Fit;
 }
 
 /** 布局模板：cells 为 0..1 的归一化矩形 */
@@ -48,4 +53,6 @@ export interface StyleSettings {
   /** 圆角，单位同上 */
   radius: number;
   background: string;
+  /** 全局填充方式 */
+  fit: Fit;
 }

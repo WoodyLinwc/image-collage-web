@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type { Photo, Rect } from '../types';
-import { MAX_ZOOM, placeImage } from '../geometry';
+import type { Fit, Photo, Rect } from '../types';
+import { MAX_ZOOM, placeImage, visibleRect } from '../geometry';
 
 interface Props {
   photos: Photo[];
@@ -19,6 +19,8 @@ interface Props {
   /** 哪些格子外圈有描边，以及描边宽度 */
   frames?: boolean[];
   frameWidth: number;
+  /** 全局填充方式（单张图可以单独覆盖） */
+  defaultFit: Fit;
   onTap: (id: string | null) => void;
   onChange: (id: string, patch: Partial<Photo>) => void;
 }
@@ -45,7 +47,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
  * 第二根手指落在别处也能双指缩放（小格子里放不下两根手指）。
  */
 export function Board(props: Props) {
-  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages, pageGap, frames, frameWidth } = props;
+  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages, pageGap, frames, frameWidth, defaultFit } = props;
   const ref = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   latest.current = props;
@@ -106,12 +108,13 @@ export function Board(props: Props) {
       const hit = lookup(g.id);
       if (!hit) return;
       const { photo, rect } = hit;
-      const pl = placeImage(rect.w, rect.h, photo.width, photo.height, g.zoom, 0, 0);
+      const pl = placeImage(rect.w, rect.h, photo.width, photo.height, g.zoom, 0, 0, photo.fit ?? latest.current.defaultFit);
+      // 图片比格子大：拖动改变裁切位置；图片比格子小（完整显示）：拖动改变它在空白里的位置
       const ox = pl.w - rect.w;
       const oy = pl.h - rect.h;
       latest.current.onChange(g.id, {
-        px: ox > 0.5 ? clamp(g.px - dx / ox, 0, 1) : photo.px,
-        py: oy > 0.5 ? clamp(g.py - dy / oy, 0, 1) : photo.py,
+        px: Math.abs(ox) > 0.5 ? clamp(g.px - dx / ox, 0, 1) : photo.px,
+        py: Math.abs(oy) > 0.5 ? clamp(g.py - dy / oy, 0, 1) : photo.py,
       });
     } else if (g.id && pointers.current.size >= 2) {
       const [a, b] = [...pointers.current.values()];
@@ -162,9 +165,12 @@ export function Board(props: Props) {
     rects.map((r, i) => {
       const p = photos[i];
       if (!p) return null;
+      const pl = placeImage(r.w, r.h, p.width, p.height, p.zoom, p.px, p.py, p.fit ?? defaultFit);
+      // 只渲染照片真正露出来的区域（完整显示时其余部分就是背景色）
+      const v = visibleRect(r, pl);
+      if (v.w < 1 || v.h < 1) return null;
       // 只渲染和这一页有交集的格子
-      if (r.x >= (k + 1) * pw || r.x + r.w <= k * pw) return null;
-      const pl = placeImage(r.w, r.h, p.width, p.height, p.zoom, p.px, p.py);
+      if (v.x >= (k + 1) * pw || v.x + v.w <= k * pw) return null;
       const cls = ['cell', p.id === selectedId && 'is-selected', swapMode && p.id !== selectedId && 'is-swap'].filter(Boolean).join(' ');
       return (
         <div
@@ -172,11 +178,11 @@ export function Board(props: Props) {
           data-id={p.id}
           className={cls}
           style={{
-            left: r.x,
-            top: r.y,
-            width: r.w,
-            height: r.h,
-            borderRadius: radii[i],
+            left: v.x,
+            top: v.y,
+            width: v.w,
+            height: v.h,
+            borderRadius: Math.min(radii[i] ?? 0, v.w / 2, v.h / 2),
             boxShadow: frames?.[i] ? `0 0 0 ${frameWidth}px ${background}` : undefined,
           }}
         >
@@ -187,7 +193,7 @@ export function Board(props: Props) {
             style={{
               width: pl.w.toFixed(2) + 'px',
               height: pl.h.toFixed(2) + 'px',
-              transform: `translate3d(${pl.x.toFixed(2)}px, ${pl.y.toFixed(2)}px, 0)`,
+              transform: `translate3d(${(r.x + pl.x - v.x).toFixed(2)}px, ${(r.y + pl.y - v.y).toFixed(2)}px, 0)`,
             }}
           />
         </div>
