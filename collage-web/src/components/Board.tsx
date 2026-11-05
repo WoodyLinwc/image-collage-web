@@ -12,8 +12,10 @@ interface Props {
   background: string;
   selectedId: string | null;
   swapMode: boolean;
-  /** 横向页数，>1 时画出分页线 */
+  /** 横向页数，>1 时按页分开显示 */
   pages: number;
+  /** 页与页之间的空隙（屏幕像素），只用于预览 */
+  pageGap: number;
   /** 哪些格子外圈有描边，以及描边宽度 */
   frames?: boolean[];
   frameWidth: number;
@@ -43,7 +45,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
  * 第二根手指落在别处也能双指缩放（小格子里放不下两根手指）。
  */
 export function Board(props: Props) {
-  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages, frames, frameWidth } = props;
+  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages, pageGap, frames, frameWidth } = props;
   const ref = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   latest.current = props;
@@ -155,54 +157,66 @@ export function Board(props: Props) {
     };
   }, []);
 
+  const pw = width / pages;
+  const cellsFor = (k: number) =>
+    rects.map((r, i) => {
+      const p = photos[i];
+      if (!p) return null;
+      // 只渲染和这一页有交集的格子
+      if (r.x >= (k + 1) * pw || r.x + r.w <= k * pw) return null;
+      const pl = placeImage(r.w, r.h, p.width, p.height, p.zoom, p.px, p.py);
+      const cls = ['cell', p.id === selectedId && 'is-selected', swapMode && p.id !== selectedId && 'is-swap'].filter(Boolean).join(' ');
+      return (
+        <div
+          key={`${p.id}:${k}`}
+          data-id={p.id}
+          className={cls}
+          style={{
+            left: r.x,
+            top: r.y,
+            width: r.w,
+            height: r.h,
+            borderRadius: radii[i],
+            boxShadow: frames?.[i] ? `0 0 0 ${frameWidth}px ${background}` : undefined,
+          }}
+        >
+          <img
+            src={p.previewUrl}
+            alt=""
+            draggable={false}
+            style={{
+              width: pl.w.toFixed(2) + 'px',
+              height: pl.h.toFixed(2) + 'px',
+              transform: `translate3d(${pl.x.toFixed(2)}px, ${pl.y.toFixed(2)}px, 0)`,
+            }}
+          />
+        </div>
+      );
+    });
+
+  // 拆成多张时，每一页单独一个框、页与页之间留空隙：预览看到的就是导出的每一张
   return (
     <div
       ref={ref}
       className="board"
-      style={{ width, height, background }}
+      style={{ width: width + (pages - 1) * pageGap, height }}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={(e) => endPointer(e, false)}
       onPointerCancel={(e) => endPointer(e, true)}
     >
-      {rects.map((r, i) => {
-        const p = photos[i];
-        if (!p) return null;
-        const pl = placeImage(r.w, r.h, p.width, p.height, p.zoom, p.px, p.py);
-        const cls = ['cell', p.id === selectedId && 'is-selected', swapMode && p.id !== selectedId && 'is-swap']
-          .filter(Boolean)
-          .join(' ');
-        return (
-          <div key={p.id} data-id={p.id} className={cls} style={{
-              left: r.x,
-              top: r.y,
-              width: r.w,
-              height: r.h,
-              borderRadius: radii[i],
-              boxShadow: frames?.[i] ? `0 0 0 ${frameWidth}px ${background}` : undefined,
-            }}
-          >
-            <img
-              src={p.previewUrl}
-              alt=""
-              draggable={false}
-              style={{
-                width: pl.w.toFixed(2) + 'px',
-                height: pl.h.toFixed(2) + 'px',
-                transform: `translate3d(${pl.x.toFixed(2)}px, ${pl.y.toFixed(2)}px, 0)`,
-              }}
-            />
+      {Array.from({ length: pages }, (_, k) => (
+        <div key={`page${k}`} className="page-frame" style={{ left: k * (pw + pageGap), width: pw, height, background }}>
+          <div className="page-inner" style={{ left: -k * pw, width, height }}>
+            {cellsFor(k)}
           </div>
-        );
-      })}
+        </div>
+      ))}
       {pages > 1 &&
         Array.from({ length: pages }, (_, k) => (
-          <div key={`pg${k}`} className="page-mark" style={{ left: (k * width) / pages, width: width / pages }} aria-hidden="true">
-            {k > 0 && <span className="seam" />}
-            <span className="page-no">
-              {k + 1}/{pages}
-            </span>
-          </div>
+          <span key={`no${k}`} className="page-no" style={{ left: k * (pw + pageGap) + pw / 2 }} aria-hidden="true">
+            {k + 1}/{pages}
+          </span>
         ))}
     </div>
   );

@@ -11,6 +11,8 @@ import { ExportSheet } from './components/ExportSheet';
 import { Icon } from './components/Icon';
 
 const PAGE_OPTIONS = [1, 2, 3, 4, 5];
+/** 预览时页与页之间的空隙 */
+const PAGE_GAP = 10;
 const BG_SWATCHES = ['#ffffff', '#f4efe6', '#e9d8c8', '#f6d4d8', '#cfdde6', '#dbe5cf', '#1d1b18', '#000000'];
 
 type Tab = 'layout' | 'ratio' | 'pages' | 'style' | 'bg';
@@ -89,7 +91,7 @@ export default function App() {
   const board = useMemo(() => {
     if (stage.w <= 0 || stage.h <= 0) return null;
     // 先算单页宽度并取整，保证每条分页线都落在整像素上
-    let pw = stage.w / pages;
+    let pw = (stage.w - (pages - 1) * PAGE_GAP) / pages;
     if ((pw * ratio.h) / ratio.w > stage.h) pw = (stage.h * ratio.w) / ratio.h;
     pw = Math.floor(pw);
     return { W: pw * pages, H: Math.floor((pw * ratio.h) / ratio.w) };
@@ -266,7 +268,7 @@ export default function App() {
       </header>
 
       <main className="workspace">
-        <div className="stage" ref={stageRef} onClick={(e) => e.target === e.currentTarget && handleTap(null)}>
+        <div className={`stage ${pages > 1 && photos.length > 0 ? 'multi' : ''}`} ref={stageRef} onClick={(e) => e.target === e.currentTarget && handleTap(null)}>
           {photos.length === 0 ? (
             <div className="empty">
               <div className="empty-art" aria-hidden="true">
@@ -293,13 +295,14 @@ export default function App() {
               selectedId={selectedId}
               swapMode={swapMode}
               pages={pages}
+              pageGap={PAGE_GAP}
               frames={template.frames}
               frameWidth={frameWidth(unit)}
               onTap={handleTap}
               onChange={updatePhoto}
             />
           ) : null}
-          {photos.length > 0 && !selected && <p className="hint">{pages > 1 ? `虚线处分页，将导出 ${pages} 张 · 拖动或双指调整画面` : '拖动调整画面 · 双指或滚轮缩放 · 轻点选中图片'}</p>}
+          {photos.length > 0 && !selected && <p className="hint">{pages > 1 ? `预览已按导出的 ${pages} 张分开显示 · 拖动或双指调整画面` : '拖动调整画面 · 双指或滚轮缩放 · 轻点选中图片'}</p>}
           {busy && (
             <div className="busy">
               <div className="spinner" />

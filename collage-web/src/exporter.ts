@@ -153,7 +153,18 @@ export async function renderCollage(o: RenderOptions): Promise<Blob[]> {
         const sh = Math.min(ih, r.h / pl.scale);
         const sx = Math.min(Math.max(0, -pl.x / pl.scale), iw - sw);
         const sy = Math.min(Math.max(0, -pl.y / pl.scale), ih - sh);
-        const src = stepDown(img, sx, sy, sw, sh, r.w, r.h);
+        // 向外多画 1 像素再按格子精确裁切：缩放时图片边缘的半透明像素落在裁切区外，
+        // 任何浏览器（包括 iOS Safari）都不会在图片边缘留下细线
+        const m = 1 / pl.scale;
+        const sx0 = Math.max(0, sx - m);
+        const sy0 = Math.max(0, sy - m);
+        const sx1 = Math.min(iw, sx + sw + m);
+        const sy1 = Math.min(ih, sy + sh + m);
+        const dx = r.x - (sx - sx0) * pl.scale;
+        const dy = r.y - (sy - sy0) * pl.scale;
+        const dw = (sx1 - sx0) * pl.scale;
+        const dh = (sy1 - sy0) * pl.scale;
+        const src = stepDown(img, sx0, sy0, sx1 - sx0, sy1 - sy0, Math.ceil(dw), Math.ceil(dh));
 
         const radius = cornerRadius(o.style, unit, r);
         if (o.template.frames?.[i]) {
@@ -168,7 +179,7 @@ export async function renderCollage(o: RenderOptions): Promise<Blob[]> {
         ctx.clip();
         ctx.imageSmoothingEnabled = true;
         ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(src.image, src.sx, src.sy, src.sw, src.sh, r.x, r.y, r.w, r.h);
+        ctx.drawImage(src.image, src.sx, src.sy, src.sw, src.sh, dx, dy, dw, dh);
         ctx.restore();
         src.dispose();
       } finally {

@@ -164,10 +164,22 @@ p {
   position: relative;
   flex: none;
   touch-action: none;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 40px -18px rgba(40, 30, 10, 0.35);
-  transition: background-color 0.2s;
   -webkit-user-select: none;
   user-select: none;
+}
+/* 每一页一个框；多页时页与页之间留空隙，和导出的图片一一对应 */
+.page-frame {
+  position: absolute;
+  top: 0;
+  overflow: hidden;
+  isolation: isolate;
+  transform: translateZ(0);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 18px 40px -18px rgba(40, 30, 10, 0.35);
+  transition: background-color 0.2s;
+}
+.page-inner {
+  position: absolute;
+  top: 0;
 }
 
 .cell {
@@ -511,33 +523,19 @@ p {
   width: 0;
   border-left: 1px dashed var(--accent);
 }
-.page-mark {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  pointer-events: none;
-}
-.seam {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 0;
-  border-left: 1.5px dashed rgba(255, 255, 255, 0.95);
-  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.55));
+.stage.multi {
+  padding-top: 30px;
 }
 .page-no {
   position: absolute;
-  top: 6px;
-  left: 50%;
+  bottom: calc(100% + 8px);
   transform: translateX(-50%);
-  padding: 2px 7px;
-  border-radius: 99px;
-  background: rgba(29, 27, 24, 0.55);
-  color: #fff;
-  font-size: 10px;
-  line-height: 1.4;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
 }
 .pages-row {
   display: flex;
@@ -821,6 +819,9 @@ p {
   }
   .stage {
     padding: 24px 32px 40px;
+  }
+  .stage.multi {
+    padding-top: 40px;
   }
   .hint {
     bottom: 14px;
