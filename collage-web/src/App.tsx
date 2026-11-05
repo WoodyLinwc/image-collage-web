@@ -3,19 +3,21 @@ import type { ChangeEvent } from 'react';
 import type { Photo, StyleSettings } from './types';
 import { RATIOS } from './ratios';
 import { templatesFor } from './layouts';
-import { cellRects, cornerRadius, MAX_ZOOM } from './geometry';
+import { cellRects, cornerRadius, MAX_ZOOM, styleUnit } from './geometry';
 import { isImageFile, loadPhoto, MAX_PHOTOS } from './imageLoader';
 import { Board } from './components/Board';
-import { RatioButton, TemplateThumb } from './components/Thumbs';
+import { PagesButton, RatioButton, TemplateThumb } from './components/Thumbs';
 import { ExportSheet } from './components/ExportSheet';
 import { Icon } from './components/Icon';
 
+const PAGE_OPTIONS = [1, 2, 3, 4, 5];
 const BG_SWATCHES = ['#ffffff', '#f4efe6', '#e9d8c8', '#f6d4d8', '#cfdde6', '#dbe5cf', '#1d1b18', '#000000'];
 
-type Tab = 'layout' | 'ratio' | 'style' | 'bg';
+type Tab = 'layout' | 'ratio' | 'pages' | 'style' | 'bg';
 const TABS: { id: Tab; label: string }[] = [
   { id: 'layout', label: '布局' },
   { id: 'ratio', label: '比例' },
+  { id: 'pages', label: '拆分' },
   { id: 'style', label: '边框' },
   { id: 'bg', label: '背景' },
 ];
@@ -33,6 +35,8 @@ function Slider({ label, value, max, onChange }: { label: string; value: number;
 export default function App() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [ratioId, setRatioId] = useState('4:5');
+  /** 横向拆成几张（Ins / 小红书左右滑动的无缝拼图） */
+  const [pages, setPages] = useState(1);
   const [templateId, setTemplateId] = useState<string | null>(null);
   const [style, setStyle] = useState<StyleSettings>({ gap: 12, padding: 12, radius: 0, background: '#ffffff' });
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -49,7 +53,7 @@ export default function App() {
   photosRef.current = photos;
 
   const ratio = RATIOS.find((r) => r.id === ratioId) ?? RATIOS[0];
-  const templates = useMemo(() => templatesFor(photos.length), [photos.length]);
+  const templates = useMemo(() => templatesFor(photos.length, pages, ratio.w / ratio.h), [photos.length, pages, ratio]);
   const template = templates.find((t) => t.id === templateId) ?? templates[0];
   const selected = photos.find((p) => p.id === selectedId) ?? null;
 
@@ -77,17 +81,19 @@ export default function App() {
 
   const board = useMemo(() => {
     if (stage.w <= 0 || stage.h <= 0) return null;
-    let W = stage.w;
-    let H = (W * ratio.h) / ratio.w;
-    if (H > stage.h) {
-      H = stage.h;
-      W = (H * ratio.w) / ratio.h;
-    }
-    return { W: Math.floor(W), H: Math.floor(H) };
-  }, [stage, ratio]);
+    // 先算单页宽度并取整，保证每条分页线都落在整像素上
+    let pw = stage.w / pages;
+    if ((pw * ratio.h) / ratio.w > stage.h) pw = (stage.h * ratio.w) / ratio.h;
+    pw = Math.floor(pw);
+    return { W: pw * pages, H: Math.floor((pw * ratio.h) / ratio.w) };
+  }, [stage, ratio, pages]);
 
-  const rects = useMemo(() => (board && template ? cellRects(template, board.W, board.H, style) : []), [board, template, style]);
-  const radii = useMemo(() => (board ? rects.map((r) => cornerRadius(style, board.W, board.H, r)) : []), [rects, board, style]);
+  const unit = board ? styleUnit(board.W, board.H, pages) : 0;
+  const rects = useMemo(
+    () => (board && template ? cellRects(template, board.W, board.H, style, true, unit) : []),
+    [board, template, style, unit],
+  );
+  const radii = useMemo(() => rects.map((r) => cornerRadius(style, unit, r)), [rects, style, unit]);
 
   // ---------- 图片增删改 ----------
   const addFiles = useCallback(
@@ -160,10 +166,12 @@ export default function App() {
     setSwapMode(false);
   }, [selectedId]);
 
+  const clearTimer = useRef<number | undefined>(undefined);
   const clearAll = () => {
+    window.clearTimeout(clearTimer.current);
     if (!confirmClear) {
       setConfirmClear(true);
-      window.setTimeout(() => setConfirmClear(false), 2500);
+      clearTimer.current = window.setTimeout(() => setConfirmClear(false), 2500);
       return;
     }
     photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
@@ -277,11 +285,12 @@ export default function App() {
               background={style.background}
               selectedId={selectedId}
               swapMode={swapMode}
+              pages={pages}
               onTap={handleTap}
               onChange={updatePhoto}
             />
           ) : null}
-          {photos.length > 0 && !selected && <p className="hint">拖动调整画面 · 双指或滚轮缩放 · 轻点选中图片</p>}
+          {photos.length > 0 && !selected && <p className="hint">{pages > 1 ? `虚线处分页，将导出 ${pages} 张 · 拖动或双指调整画面` : '拖动调整画面 · 双指或滚轮缩放 · 轻点选中图片'}</p>}
           {busy && (
             <div className="busy">
               <div className="spinner" />
@@ -351,19 +360,32 @@ export default function App() {
             ) : (
               <div className="hscroll">
                 {templates.map((t) => (
-                  <TemplateThumb key={t.id} template={t} ratio={ratio} active={t.id === template?.id} onClick={() => setTemplateId(t.id)} />
+                  <TemplateThumb key={t.id} template={t} aspect={(pages * ratio.w) / ratio.h} pages={pages} active={t.id === template?.id} onClick={() => setTemplateId(t.id)} />
                 ))}
               </div>
             )}
           </section>
 
           <section className={`section ${tab === 'ratio' ? 'active' : ''}`}>
-            <h3 className="section-title">画布比例</h3>
+            <h3 className="section-title">每张比例</h3>
             <div className="hscroll">
               {RATIOS.map((r) => (
                 <RatioButton key={r.id} ratio={r} active={r.id === ratio.id} onClick={() => setRatioId(r.id)} />
               ))}
             </div>
+          </section>
+
+          <section className={`section ${tab === 'pages' ? 'active' : ''}`}>
+            <h3 className="section-title">拆成多张</h3>
+            <div className="pages-row">
+              <span className="pages-label">拆成</span>
+              <div className="hscroll pages-scroll">
+                {PAGE_OPTIONS.map((n) => (
+                  <PagesButton key={n} n={n} ratio={ratio} active={n === pages} onClick={() => setPages(n)} />
+                ))}
+              </div>
+            </div>
+            <p className="muted small pages-note">拆成多张时画面左右无缝衔接，适合 Ins / 小红书左右滑动</p>
           </section>
 
           <section className={`section ${tab === 'style' ? 'active' : ''}`}>
@@ -401,7 +423,7 @@ export default function App() {
 
       {toast && <div className="toast">{toast}</div>}
 
-      {exportOpen && template && <ExportSheet photos={photos} template={template} ratio={ratio} style={style} onClose={closeExport} />}
+      {exportOpen && template && <ExportSheet photos={photos} template={template} ratio={ratio} style={style} pages={pages} onClose={closeExport} />}
     </div>
   );
 }

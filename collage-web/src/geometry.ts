@@ -3,14 +3,18 @@ import type { Rect, StyleSettings, Template } from './types';
 export const MAX_ZOOM = 4;
 const EPS = 1e-6;
 
+/** 间距、边框、圆角的基准长度：单页的短边（多页拼图时每页看起来一致） */
+export function styleUnit(W: number, H: number, pages = 1): number {
+  return Math.min(W / pages, H);
+}
+
 /**
  * 把模板的归一化格子换算成像素矩形。
  * 预览和导出共用这一个函数，所以两者的排版完全一致，只是分辨率不同。
  */
-export function cellRects(t: Template, W: number, H: number, st: StyleSettings, round = true): Rect[] {
-  const s = Math.min(W, H);
-  const pad = (st.padding / 1000) * s;
-  const half = ((st.gap / 1000) * s) / 2;
+export function cellRects(t: Template, W: number, H: number, st: StyleSettings, round = true, unit = Math.min(W, H)): Rect[] {
+  const pad = (st.padding / 1000) * unit;
+  const half = ((st.gap / 1000) * unit) / 2;
   const iw = W - pad * 2;
   const ih = H - pad * 2;
   return t.cells.map((c) => {
@@ -34,8 +38,8 @@ export function cellRects(t: Template, W: number, H: number, st: StyleSettings, 
   });
 }
 
-export function cornerRadius(st: StyleSettings, W: number, H: number, r: Rect): number {
-  const radius = (st.radius / 1000) * Math.min(W, H);
+export function cornerRadius(st: StyleSettings, unit: number, r: Rect): number {
+  const radius = (st.radius / 1000) * unit;
   return Math.max(0, Math.min(radius, r.w / 2, r.h / 2));
 }
 

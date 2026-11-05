@@ -12,6 +12,8 @@ interface Props {
   background: string;
   selectedId: string | null;
   swapMode: boolean;
+  /** 横向页数，>1 时画出分页线 */
+  pages: number;
   onTap: (id: string | null) => void;
   onChange: (id: string, patch: Partial<Photo>) => void;
 }
@@ -38,7 +40,7 @@ const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
  * 第二根手指落在别处也能双指缩放（小格子里放不下两根手指）。
  */
 export function Board(props: Props) {
-  const { photos, rects, radii, width, height, background, selectedId, swapMode } = props;
+  const { photos, rects, radii, width, height, background, selectedId, swapMode, pages } = props;
   const ref = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
   latest.current = props;
@@ -182,6 +184,15 @@ export function Board(props: Props) {
           </div>
         );
       })}
+      {pages > 1 &&
+        Array.from({ length: pages }, (_, k) => (
+          <div key={`pg${k}`} className="page-mark" style={{ left: (k * width) / pages, width: width / pages }} aria-hidden="true">
+            {k > 0 && <span className="seam" />}
+            <span className="page-no">
+              {k + 1}/{pages}
+            </span>
+          </div>
+        ))}
     </div>
   );
 }
